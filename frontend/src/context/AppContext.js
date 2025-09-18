@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
 
@@ -12,6 +12,7 @@ const initialState = {
   users: [],
   loading: false,
   error: null,
+  success: null,
   socketConnected: false,
   currentUser: {
     _id: '507f1f77bcf86cd799439011', // Default user for demo
@@ -28,6 +29,12 @@ const appReducer = (state, action) => {
     
     case 'SET_ERROR':
       return { ...state, error: action.payload };
+    
+    case 'SET_SUCCESS':
+      return { ...state, success: action.payload };
+    
+    case 'CLEAR_SUCCESS':
+      return { ...state, success: null };
     
     case 'SET_TASKS':
       return { ...state, tasks: action.payload };
@@ -62,6 +69,7 @@ const appReducer = (state, action) => {
 
 export const AppProvider = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const [initialized, setInitialized] = useState(false);
 
   // Initialize socket connection
   useEffect(() => {
@@ -113,12 +121,25 @@ export const AppProvider = ({ children }) => {
     };
   }, []);
 
+  // Initialize data once
+  useEffect(() => {
+    if (!initialized) {
+      console.log('🔄 Initializing app data...');
+      fetchTasks();
+      fetchUsers();
+      setInitialized(true);
+    }
+  }, [initialized]);
+
   // API functions
   const fetchTasks = async () => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      const response = await axios.get('http://localhost:5000/api/tasks');
+      const response = await axios.get('http://localhost:5000/api/tasks', {
+        timeout: 5000 // 5 second timeout
+      });
       dispatch({ type: 'SET_TASKS', payload: response.data });
+      console.log('✅ Tasks fetched successfully:', response.data.length);
     } catch (error) {
       console.error('Error fetching tasks:', error);
       dispatch({ type: 'SET_ERROR', payload: error.response?.data?.message || 'Failed to fetch tasks' });
@@ -129,8 +150,11 @@ export const AppProvider = ({ children }) => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/users');
+      const response = await axios.get('http://localhost:5000/api/users', {
+        timeout: 5000 // 5 second timeout
+      });
       dispatch({ type: 'SET_USERS', payload: response.data });
+      console.log('✅ Users fetched successfully:', response.data.length);
     } catch (error) {
       console.error('Error fetching users:', error);
       dispatch({ type: 'SET_ERROR', payload: error.response?.data?.message || 'Failed to fetch users' });
@@ -141,6 +165,29 @@ export const AppProvider = ({ children }) => {
     try {
       const response = await axios.post('http://localhost:5000/api/tasks', taskData);
       dispatch({ type: 'ADD_TASK', payload: response.data });
+      
+      // Clear any previous errors and show success message
+      dispatch({ type: 'SET_ERROR', payload: null });
+      dispatch({ type: 'SET_SUCCESS', payload: 'Task created successfully!' });
+      
+      // Auto-clear success message after 3 seconds
+      setTimeout(() => {
+        dispatch({ type: 'CLEAR_SUCCESS' });
+      }, 3000);
+      
+      // Emit socket event for real-time updates
+      if (socket && socket.connected) {
+        try {
+          socket.emit('task-created', {
+            task: response.data,
+            userId: state.currentUser._id
+          });
+        } catch (socketError) {
+          console.warn('Socket emission failed:', socketError);
+          // Don't throw error for socket issues
+        }
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Error creating task:', error);
@@ -153,6 +200,16 @@ export const AppProvider = ({ children }) => {
     try {
       const response = await axios.put(`http://localhost:5000/api/tasks/${taskId}`, updates);
       dispatch({ type: 'UPDATE_TASK', payload: response.data });
+      
+      // Clear any previous errors and show success message
+      dispatch({ type: 'SET_ERROR', payload: null });
+      dispatch({ type: 'SET_SUCCESS', payload: 'Task updated successfully!' });
+      
+      // Auto-clear success message after 3 seconds
+      setTimeout(() => {
+        dispatch({ type: 'CLEAR_SUCCESS' });
+      }, 3000);
+      
       return response.data;
     } catch (error) {
       console.error('Error updating task:', error);
@@ -165,6 +222,28 @@ export const AppProvider = ({ children }) => {
     try {
       await axios.delete(`http://localhost:5000/api/tasks/${taskId}`);
       dispatch({ type: 'DELETE_TASK', payload: { taskId } });
+      
+      // Clear any previous errors and show success message
+      dispatch({ type: 'SET_ERROR', payload: null });
+      dispatch({ type: 'SET_SUCCESS', payload: 'Task deleted successfully!' });
+      
+      // Auto-clear success message after 3 seconds
+      setTimeout(() => {
+        dispatch({ type: 'CLEAR_SUCCESS' });
+      }, 3000);
+      
+      // Emit socket event for real-time updates
+      if (socket && socket.connected) {
+        try {
+          socket.emit('task-deleted', {
+            taskId,
+            userId: state.currentUser._id
+          });
+        } catch (socketError) {
+          console.warn('Socket emission failed:', socketError);
+          // Don't throw error for socket issues
+        }
+      }
     } catch (error) {
       console.error('Error deleting task:', error);
       dispatch({ type: 'SET_ERROR', payload: error.response?.data?.message || 'Failed to delete task' });
@@ -201,14 +280,22 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const emitStatusChange = (taskId, newStatus, newPosition) => {
-    if (socket) {
-      socket.emit('task-status-changed', {
-        taskId,
-        newStatus,
-        newPosition,
-        userId: state.currentUser._id
-      });
+  const emitStatusChange = async (taskId, newStatus, newPosition) => {
+    try {
+      // Update task status via API
+      await updateTask(taskId, { status: newStatus, position: newPosition });
+      
+      // Emit via socket for real-time updates
+      if (socket) {
+        socket.emit('task-status-changed', {
+          taskId,
+          newStatus,
+          newPosition,
+          userId: state.currentUser._id
+        });
+      }
+    } catch (error) {
+      console.error('Error updating task status:', error);
     }
   };
 

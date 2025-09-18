@@ -71,15 +71,20 @@
 }
 
 .column-content.dragging-over {
-  background-color: rgba(59, 130, 246, 0.1);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  border: 2px dashed rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
 }
 
 .task-wrapper {
   margin-bottom: 12px;
+  transition: all 0.2s ease;
 }
 
 .task-wrapper.dragging {
-  transform: rotate(5deg);
+  transform: rotate(3deg) scale(1.05);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
 }
 
 .add-task-btn {

@@ -33,7 +33,7 @@ const socketHandlers = (io) => {
          .populate('createdBy', 'name email avatar');
 
         if (!task) {
-          socket.emit('error', { message: 'Task not found' });
+          // socket.emit('error', { message: 'Task not found' });
           return;
         }
 
@@ -83,7 +83,7 @@ const socketHandlers = (io) => {
         io.emit('task-created', task);
       } catch (error) {
         console.error('Error creating task via socket:', error);
-        socket.emit('error', { message: 'Failed to create task' });
+        // socket.emit('error', { message: 'Failed to create task' });
       }
     });
 
@@ -94,7 +94,7 @@ const socketHandlers = (io) => {
         
         const task = await Task.findById(taskId);
         if (!task) {
-          socket.emit('error', { message: 'Task not found' });
+          // socket.emit('error', { message: 'Task not found' });
           return;
         }
 
@@ -129,7 +129,7 @@ const socketHandlers = (io) => {
          .populate('createdBy', 'name email avatar');
 
         if (!task) {
-          socket.emit('error', { message: 'Task not found' });
+          // socket.emit('error', { message: 'Task not found' });
           return;
         }
 
@@ -164,7 +164,7 @@ const socketHandlers = (io) => {
          .populate('createdBy', 'name email avatar');
 
         if (!task) {
-          socket.emit('error', { message: 'Task not found' });
+          // socket.emit('error', { message: 'Task not found' });
           return;
         }
 

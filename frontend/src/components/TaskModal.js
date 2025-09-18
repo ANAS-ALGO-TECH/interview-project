@@ -4,20 +4,21 @@ import axios from 'axios';
 import './TaskModal.css';
 
 const TaskModal = ({ task, onClose }) => {
-  const { users, emitTaskUpdate, emitTaskDeletion, emitTaskAssignment } = useApp();
+  const { users, emitTaskUpdate, deleteTask, emitTaskAssignment, updateTask } = useApp();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [showActivityLogs, setShowActivityLogs] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     title: task.title,
     description: task.description || '',
     status: task.status,
     priority: task.priority,
-    assignedTo: task.assignedTo || '',
+    assignedTo: task.assignedTo ? (typeof task.assignedTo === 'object' ? task.assignedTo._id : task.assignedTo) : '',
     dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
     tags: task.tags ? task.tags.join(', ') : ''
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [activityLogs, setActivityLogs] = useState([]);
-  const [showActivityLogs, setShowActivityLogs] = useState(false);
 
   useEffect(() => {
     fetchActivityLogs();
@@ -53,9 +54,8 @@ const TaskModal = ({ task, onClose }) => {
         tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : []
       };
 
-      // Update task via API
-      await emitTaskUpdate(task._id, updates);
-      onClose();
+      await updateTask(task._id, updates);
+      setIsEditing(false);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update task');
     } finally {
@@ -63,11 +63,24 @@ const TaskModal = ({ task, onClose }) => {
     }
   };
 
+  const handleQuickAssign = async (userId) => {
+    try {
+      await updateTask(task._id, { assignedTo: userId });
+      // Update local form data if in edit mode
+      if (isEditing) {
+        setFormData(prev => ({ ...prev, assignedTo: userId }));
+      }
+    } catch (error) {
+      console.error('Error assigning task:', error);
+      setError('Failed to assign task');
+    }
+  };
+
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this task?')) {
       setLoading(true);
       try {
-        await emitTaskDeletion(task._id);
+        await deleteTask(task._id);
         onClose();
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to delete task');
@@ -75,10 +88,6 @@ const TaskModal = ({ task, onClose }) => {
         setLoading(false);
       }
     }
-  };
-
-  const handleQuickAssign = (userId) => {
-    emitTaskAssignment(task._id, userId);
   };
 
   const formatDate = (dateString) => {
@@ -91,6 +100,10 @@ const TaskModal = ({ task, onClose }) => {
   };
 
   const getAssignedUser = () => {
+    if (!task.assignedTo) return null;
+    if (typeof task.assignedTo === 'object') {
+      return task.assignedTo; // Already a user object
+    }
     return users.find(user => user._id === task.assignedTo);
   };
 
@@ -107,15 +120,19 @@ const TaskModal = ({ task, onClose }) => {
         <div className="task-modal-content">
           <div className="task-info">
             <div className="task-header-info">
-              <div className="task-status-badge">
-                <span className={`badge badge-${task.status}`}>
-                  {task.status.replace('-', ' ')}
-                </span>
+              <div className="task-title-display">
+                <h2>{task.title}</h2>
+                {task.description && (
+                  <p className="task-description-display">{task.description}</p>
+                )}
               </div>
-              <div className="task-priority-badge">
-                <span className={`badge badge-${task.priority}`}>
-                  {task.priority} priority
-                </span>
+              <div style={{ display: 'flex', gap: '8px', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <div className={`task-status-badge ${task.status}`}>
+                  {task.status === 'in-progress' ? 'In Progress' : task.status}
+                </div>
+                <div className={`task-priority-badge ${task.priority}`}>
+                  {task.priority} Priority
+                </div>
               </div>
             </div>
 
@@ -142,7 +159,7 @@ const TaskModal = ({ task, onClose }) => {
                   <p>No one assigned</p>
                   <div className="quick-assign">
                     <span>Quick assign:</span>
-                    {users.slice(0, 3).map(user => (
+                    {users.map(user => (
                       <button
                         key={user._id}
                         className="btn btn-sm btn-primary"
@@ -155,6 +172,19 @@ const TaskModal = ({ task, onClose }) => {
                 </div>
               )}
             </div>
+
+            {task.tags && task.tags.length > 0 && (
+              <div className="task-tags-section">
+                <h4>Tags</h4>
+                <div className="task-tags-display">
+                  {task.tags.map((tag, index) => (
+                    <span key={index} className="task-tag-display">
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="task-dates">
               <div className="date-info">
@@ -171,127 +201,112 @@ const TaskModal = ({ task, onClose }) => {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label">Title *</label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                className="input"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Description</label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                className="textarea"
-                rows="4"
-              />
-            </div>
-
-            <div className="form-row">
+          {isEditing ? (
+            <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label className="form-label">Status</label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleChange}
-                  className="select"
-                >
-                  <option value="todo">To Do</option>
-                  <option value="in-progress">In Progress</option>
-                  <option value="done">Done</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Priority</label>
-                <select
-                  name="priority"
-                  value={formData.priority}
-                  onChange={handleChange}
-                  className="select"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Assign To</label>
-                <select
-                  name="assignedTo"
-                  value={formData.assignedTo}
-                  onChange={handleChange}
-                  className="select"
-                >
-                  <option value="">Unassigned</option>
-                  {users.map(user => (
-                    <option key={user._id} value={user._id}>
-                      {user.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Due Date</label>
+                <label className="form-label">Title *</label>
                 <input
-                  type="date"
-                  name="dueDate"
-                  value={formData.dueDate}
+                  type="text"
+                  name="title"
+                  value={formData.title}
                   onChange={handleChange}
                   className="input"
+                  required
                 />
               </div>
-            </div>
 
-            <div className="form-group">
-              <label className="form-label">Tags</label>
-              <input
-                type="text"
-                name="tags"
-                value={formData.tags}
-                onChange={handleChange}
-                className="input"
-                placeholder="Enter tags separated by commas"
-              />
-            </div>
+              <div className="form-group">
+                <label className="form-label">Description</label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  className="textarea"
+                  rows="3"
+                />
+              </div>
 
-            {error && (
-              <div className="form-error">{error}</div>
-            )}
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Status</label>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleChange}
+                    className="select"
+                  >
+                    <option value="todo">To Do</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="done">Done</option>
+                  </select>
+                </div>
 
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="btn btn-danger"
-                onClick={handleDelete}
-                disabled={loading}
-              >
-                Delete Task
-              </button>
-              <div className="action-buttons">
+                <div className="form-group">
+                  <label className="form-label">Priority</label>
+                  <select
+                    name="priority"
+                    value={formData.priority}
+                    onChange={handleChange}
+                    className="select"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Assign To</label>
+                  <select
+                    name="assignedTo"
+                    value={formData.assignedTo}
+                    onChange={handleChange}
+                    className="select"
+                  >
+                    <option value="">Unassigned</option>
+                    {users.map(user => (
+                      <option key={user._id} value={user._id}>
+                        {user.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Due Date</label>
+                  <input
+                    type="date"
+                    name="dueDate"
+                    value={formData.dueDate}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Tags</label>
+                <input
+                  type="text"
+                  name="tags"
+                  value={formData.tags}
+                  onChange={handleChange}
+                  className="input"
+                  placeholder="Enter tags separated by commas"
+                />
+              </div>
+
+              {error && (
+                <div className="form-error">{error}</div>
+              )}
+
+              <div className="modal-actions">
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={() => setShowActivityLogs(!showActivityLogs)}
-                >
-                  {showActivityLogs ? 'Hide' : 'Show'} Activity
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={onClose}
+                  onClick={() => setIsEditing(false)}
                   disabled={loading}
                 >
                   Cancel
@@ -311,31 +326,71 @@ const TaskModal = ({ task, onClose }) => {
                   )}
                 </button>
               </div>
+            </form>
+          ) : (
+            <div className="action-buttons">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowActivityLogs(!showActivityLogs)}
+              >
+                📋 {showActivityLogs ? 'Hide' : 'Show'} Activity
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setIsEditing(true)}
+              >
+                ✏️ Edit Task
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={handleDelete}
+                disabled={loading}
+              >
+                🗑️ Delete Task
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={onClose}
+                disabled={loading}
+              >
+                ✕ Close
+              </button>
             </div>
-          </form>
+          )}
 
           {showActivityLogs && (
             <div className="activity-logs-section">
               <h4>Activity Log</h4>
               <div className="activity-list">
-                {activityLogs.map((log, index) => (
-                  <div key={index} className="activity-item">
-                    <div className="activity-header">
-                      <div className="activity-user">
-                        <div className="avatar avatar-sm">
-                          {log.user?.name?.charAt(0)?.toUpperCase() || '?'}
-                        </div>
-                        <span>{log.user?.name || 'Unknown User'}</span>
-                      </div>
-                      <span className="activity-time">
-                        {new Date(log.createdAt).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="activity-description">
-                      {log.description}
-                    </div>
+                {activityLogs.length === 0 ? (
+                  <div className="no-activities">
+                    <p>No activities yet</p>
+                    <span>Activities will appear here as the task is updated</span>
                   </div>
-                ))}
+                ) : (
+                  activityLogs.map((log, index) => (
+                    <div key={index} className="activity-item">
+                      <div className="activity-header">
+                        <div className="activity-user">
+                          <div className="avatar avatar-sm">
+                            {log.user?.name?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                          <span>{log.user?.name || 'Unknown User'}</span>
+                        </div>
+                        <span className="activity-time">
+                          {new Date(log.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="activity-description">
+                        {log.description}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}

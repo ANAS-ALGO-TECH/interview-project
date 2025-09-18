@@ -13,6 +13,36 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
+.activity-header .select {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  min-width: 150px;
+}
+
+.activity-header .select:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.activity-header .select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+}
+
+.activity-header .select option {
+  background: white;
+  color: #374151;
+  padding: 8px;
+}
+
 .activity-title {
   font-size: 18px;
   font-weight: 600;

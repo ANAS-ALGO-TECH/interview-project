@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import './CreateTaskModal.css';
 
-const CreateTaskModal = ({ onClose }) => {
+const CreateTaskModal = ({ onClose, initialStatus = 'todo' }) => {
   const { users, createTask, emitTaskCreation } = useApp();
   const [formData, setFormData] = useState({
     title: '',
@@ -10,7 +10,8 @@ const CreateTaskModal = ({ onClose }) => {
     priority: 'medium',
     assignedTo: '',
     dueDate: '',
-    tags: ''
+    tags: '',
+    status: initialStatus
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -30,20 +31,23 @@ const CreateTaskModal = ({ onClose }) => {
 
     try {
       const taskData = {
-        ...formData,
+        title: formData.title,
+        description: formData.description,
+        priority: formData.priority,
+        status: formData.status,
         assignedTo: formData.assignedTo || null,
         dueDate: formData.dueDate || null,
         tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : []
       };
 
-      // Create task via API
+      // Create task via API (this will also emit socket event internally)
       await createTask(taskData);
       
-      // Also emit via socket for real-time updates
-      emitTaskCreation(taskData);
-      
+      // Clear any local error on success
+      setError('');
       onClose();
     } catch (err) {
+      console.error('CreateTaskModal error:', err);
       setError(err.response?.data?.message || 'Failed to create task');
     } finally {
       setLoading(false);
@@ -86,6 +90,20 @@ const CreateTaskModal = ({ onClose }) => {
 
           <div className="form-row">
             <div className="form-group">
+              <label className="form-label">Status</label>
+              <select
+                name="status"
+                value={formData.status}
+                onChange={handleChange}
+                className="select"
+              >
+                <option value="todo">To Do</option>
+                <option value="in-progress">In Progress</option>
+                <option value="done">Done</option>
+              </select>
+            </div>
+
+            <div className="form-group">
               <label className="form-label">Priority</label>
               <select
                 name="priority"
@@ -98,7 +116,9 @@ const CreateTaskModal = ({ onClose }) => {
                 <option value="high">High</option>
               </select>
             </div>
+          </div>
 
+          <div className="form-row">
             <div className="form-group">
               <label className="form-label">Assign To</label>
               <select
@@ -115,17 +135,17 @@ const CreateTaskModal = ({ onClose }) => {
                 ))}
               </select>
             </div>
-          </div>
 
-          <div className="form-group">
-            <label className="form-label">Due Date</label>
-            <input
-              type="date"
-              name="dueDate"
-              value={formData.dueDate}
-              onChange={handleChange}
-              className="input"
-            />
+            <div className="form-group">
+              <label className="form-label">Due Date</label>
+              <input
+                type="date"
+                name="dueDate"
+                value={formData.dueDate}
+                onChange={handleChange}
+                className="input"
+              />
+            </div>
           </div>
 
           <div className="form-group">

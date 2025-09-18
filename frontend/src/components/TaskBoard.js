@@ -8,6 +8,7 @@ import './TaskBoard.css';
 const TaskBoard = () => {
   const { tasks, emitStatusChange } = useApp();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createTaskStatus, setCreateTaskStatus] = useState('todo');
 
   // Group tasks by status
   const tasksByStatus = {
@@ -15,6 +16,7 @@ const TaskBoard = () => {
     'in-progress': tasks.filter(task => task.status === 'in-progress'),
     done: tasks.filter(task => task.status === 'done')
   };
+
 
   const statusConfig = {
     todo: {
@@ -34,27 +36,38 @@ const TaskBoard = () => {
     }
   };
 
-  const handleDragEnd = (result) => {
+  const handleDragEnd = async (result) => {
     const { destination, source, draggableId } = result;
 
-    if (!destination) return;
+    if (!destination) {
+      console.log('No destination found');
+      return;
+    }
 
     if (
       destination.droppableId === source.droppableId &&
       destination.index === source.index
     ) {
+      console.log('Same position, no change needed');
       return;
     }
 
     const newStatus = destination.droppableId;
     const newPosition = destination.index;
 
-    emitStatusChange(draggableId, newStatus, newPosition);
+    console.log(`Moving task ${draggableId} from ${source.droppableId} to ${newStatus} at position ${newPosition}`);
+
+    try {
+      await emitStatusChange(draggableId, newStatus, newPosition);
+    } catch (error) {
+      console.error('Error updating task status:', error);
+    }
   };
 
   const renderTaskColumn = (status) => {
     const config = statusConfig[status];
     const columnTasks = tasksByStatus[status];
+
 
     return (
       <div className="task-column" key={status}>
@@ -65,7 +78,7 @@ const TaskBoard = () => {
           <span className="task-count">{columnTasks.length}</span>
         </div>
         
-        <Droppable droppableId={status}>
+        <Droppable droppableId={status} key={status}>
           {(provided, snapshot) => (
             <div
               ref={provided.innerRef}
@@ -88,14 +101,15 @@ const TaskBoard = () => {
               ))}
               {provided.placeholder}
               
-              {status === 'todo' && (
-                <button
-                  className="add-task-btn"
-                  onClick={() => setShowCreateModal(true)}
-                >
-                  + Add Task
-                </button>
-              )}
+              <button
+                className="add-task-btn"
+                onClick={() => {
+                  setCreateTaskStatus(status);
+                  setShowCreateModal(true);
+                }}
+              >
+                + Add Task
+              </button>
             </div>
           )}
         </Droppable>
@@ -115,14 +129,17 @@ const TaskBoard = () => {
         </button>
       </div>
 
-      <DragDropContext onDragEnd={handleDragEnd}>
+      <DragDropContext onDragEnd={handleDragEnd} key={`drag-context-${tasks.length}`}>
         <div className="board-columns">
           {Object.keys(statusConfig).map(status => renderTaskColumn(status))}
         </div>
       </DragDropContext>
 
       {showCreateModal && (
-        <CreateTaskModal onClose={() => setShowCreateModal(false)} />
+        <CreateTaskModal 
+          onClose={() => setShowCreateModal(false)}
+          initialStatus={createTaskStatus}
+        />
       )}
     </div>
   );

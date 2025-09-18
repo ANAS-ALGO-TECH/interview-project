@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 import TaskModal from './TaskModal';
 import './TaskCard.css';
 
 const TaskCard = ({ task }) => {
-  const { users, emitTaskAssignment } = useApp();
+  const { users, emitTaskAssignment, updateTask } = useApp();
   const [showModal, setShowModal] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -17,6 +20,10 @@ const TaskCard = ({ task }) => {
   };
 
   const getAssignedUser = () => {
+    if (!task.assignedTo) return null;
+    if (typeof task.assignedTo === 'object') {
+      return task.assignedTo; // Already a user object
+    }
     return users.find(user => user._id === task.assignedTo);
   };
 
@@ -36,15 +43,62 @@ const TaskCard = ({ task }) => {
 
   const assignedUser = getAssignedUser();
 
+  const handleCardClick = (e) => {
+    if (!isDragging) {
+      setShowModal(true);
+    }
+  };
+
+  const handleDragStart = () => {
+    setIsDragging(true);
+  };
+
+  const handleDragEnd = () => {
+    setTimeout(() => setIsDragging(false), 100);
+  };
+
+  const handleStatusChange = async (newStatus) => {
+    try {
+      await updateTask(task._id, { status: newStatus });
+      setShowMenu(false);
+    } catch (error) {
+      console.error('Error updating task status:', error);
+    }
+  };
+
+  const handleMenuClick = (e) => {
+    e.stopPropagation();
+    setShowMenu(!showMenu);
+  };
+
+  const handleMenuClose = () => {
+    setShowMenu(false);
+  };
+
   return (
     <>
-      <div className="task-card" onClick={() => setShowModal(true)}>
+      <div 
+        className="task-card" 
+        onClick={handleCardClick}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
         <div className="task-header">
+          <div className="drag-handle">⋮⋮</div>
           <h4 className="task-title">{task.title}</h4>
-          <div 
-            className="priority-indicator"
-            style={{ backgroundColor: getPriorityColor(task.priority) }}
-          />
+          <div className="task-header-actions">
+            <div 
+              className="priority-indicator"
+              style={{ backgroundColor: getPriorityColor(task.priority) }}
+            />
+            <button 
+              className="three-dot-menu"
+              onClick={handleMenuClick}
+              title="Quick Actions"
+            >
+              ⋯
+            </button>
+          </div>
         </div>
         
         {task.description && (
@@ -87,11 +141,44 @@ const TaskCard = ({ task }) => {
         </div>
       </div>
 
-      {showModal && (
+      {showMenu && createPortal(
+        <div className="status-menu-overlay" onClick={handleMenuClose}>
+          <div className="status-menu" onClick={(e) => e.stopPropagation()}>
+            <div className="status-menu-header">
+              <span>Change Status</span>
+              <button className="menu-close" onClick={handleMenuClose}>×</button>
+            </div>
+            <div className="status-options">
+              <button 
+                className={`status-option ${task.status === 'todo' ? 'active' : ''}`}
+                onClick={() => handleStatusChange('todo')}
+              >
+                📋 To Do
+              </button>
+              <button 
+                className={`status-option ${task.status === 'in-progress' ? 'active' : ''}`}
+                onClick={() => handleStatusChange('in-progress')}
+              >
+                🔄 In Progress
+              </button>
+              <button 
+                className={`status-option ${task.status === 'done' ? 'active' : ''}`}
+                onClick={() => handleStatusChange('done')}
+              >
+                ✅ Done
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {showModal && createPortal(
         <TaskModal 
           task={task} 
           onClose={() => setShowModal(false)}
-        />
+        />,
+        document.body
       )}
     </>
   );
