@@ -16,9 +16,9 @@ const ActivityLogs = () => {
   const fetchActivityLogs = async () => {
     setLoading(true);
     try {
-      let url = '/api/tasks/activity/all';
+      let url = 'http://localhost:5000/api/tasks/activity/all';
       if (selectedTask !== 'all') {
-        url = `/api/tasks/${selectedTask}/activity`;
+        url = `http://localhost:5000/api/tasks/${selectedTask}/activity`;
       }
       
       const response = await axios.get(url);

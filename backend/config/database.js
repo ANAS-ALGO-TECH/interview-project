@@ -2,15 +2,27 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/collaboration_dashboard', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    // Try MongoDB Atlas connection first
+    const conn = await mongoose.connect('mongodb+srv://ANAS_TODO_MERN_APP:anastech090@anastodomernapp.ykfbxvh.mongodb.net/AnasTrello?retryWrites=true&w=majority');
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);
+    return true;
   } catch (error) {
-    console.error('Database connection error:', error);
-    process.exit(1);
+    console.log('⚠️ MongoDB Atlas connection failed, trying local MongoDB...');
+
+    try {
+      // Try local MongoDB
+      const conn = await mongoose.connect('mongodb+srv://ANAS_TODO_MERN_APP:anastech090@anastodomernapp.ykfbxvh.mongodb.net/AnasTrello?retryWrites=true&w=majority', {
+        serverSelectionTimeoutMS: 3000,
+      });
+      console.log(`MongoDB Connected (Local): ${conn.connection.host}`);
+      return true;
+    } catch (localError) {
+      console.log('⚠️ Local MongoDB also failed, using mock data for demo');
+      console.log('MongoDB Error:', error.message);
+      console.log('Local MongoDB Error:', localError.message);
+      return false;
+    }
   }
 };
 

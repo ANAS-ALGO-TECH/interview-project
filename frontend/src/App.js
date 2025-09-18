@@ -3,6 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import Header from './components/Header';
 import TaskBoard from './components/TaskBoard';
 import ActivityLogs from './components/ActivityLogs';
+import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
 
 const AppContent = () => {
@@ -15,9 +16,17 @@ const AppContent = () => {
 
   if (loading) {
     return (
-      <div className="loading">
-        <div className="spinner"></div>
-        <span style={{ marginLeft: '10px' }}>Loading...</span>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        color: 'white'
+      }}>
+        <div className="spinner" style={{ width: '40px', height: '40px', borderWidth: '4px' }}></div>
+        <span style={{ marginTop: '20px', fontSize: '18px' }}>Loading your dashboard...</span>
       </div>
     );
   }
@@ -48,9 +57,11 @@ const AppContent = () => {
 
 function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }
 

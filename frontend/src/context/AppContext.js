@@ -117,9 +117,10 @@ export const AppProvider = ({ children }) => {
   const fetchTasks = async () => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      const response = await axios.get('/api/tasks');
+      const response = await axios.get('http://localhost:5000/api/tasks');
       dispatch({ type: 'SET_TASKS', payload: response.data });
     } catch (error) {
+      console.error('Error fetching tasks:', error);
       dispatch({ type: 'SET_ERROR', payload: error.response?.data?.message || 'Failed to fetch tasks' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
@@ -128,19 +129,21 @@ export const AppProvider = ({ children }) => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('/api/users');
+      const response = await axios.get('http://localhost:5000/api/users');
       dispatch({ type: 'SET_USERS', payload: response.data });
     } catch (error) {
+      console.error('Error fetching users:', error);
       dispatch({ type: 'SET_ERROR', payload: error.response?.data?.message || 'Failed to fetch users' });
     }
   };
 
   const createTask = async (taskData) => {
     try {
-      const response = await axios.post('/api/tasks', taskData);
+      const response = await axios.post('http://localhost:5000/api/tasks', taskData);
       dispatch({ type: 'ADD_TASK', payload: response.data });
       return response.data;
     } catch (error) {
+      console.error('Error creating task:', error);
       dispatch({ type: 'SET_ERROR', payload: error.response?.data?.message || 'Failed to create task' });
       throw error;
     }
@@ -148,10 +151,11 @@ export const AppProvider = ({ children }) => {
 
   const updateTask = async (taskId, updates) => {
     try {
-      const response = await axios.put(`/api/tasks/${taskId}`, updates);
+      const response = await axios.put(`http://localhost:5000/api/tasks/${taskId}`, updates);
       dispatch({ type: 'UPDATE_TASK', payload: response.data });
       return response.data;
     } catch (error) {
+      console.error('Error updating task:', error);
       dispatch({ type: 'SET_ERROR', payload: error.response?.data?.message || 'Failed to update task' });
       throw error;
     }
@@ -159,9 +163,10 @@ export const AppProvider = ({ children }) => {
 
   const deleteTask = async (taskId) => {
     try {
-      await axios.delete(`/api/tasks/${taskId}`);
+      await axios.delete(`http://localhost:5000/api/tasks/${taskId}`);
       dispatch({ type: 'DELETE_TASK', payload: { taskId } });
     } catch (error) {
+      console.error('Error deleting task:', error);
       dispatch({ type: 'SET_ERROR', payload: error.response?.data?.message || 'Failed to delete task' });
       throw error;
     }

@@ -25,7 +25,7 @@ const TaskModal = ({ task, onClose }) => {
 
   const fetchActivityLogs = async () => {
     try {
-      const response = await axios.get(`/api/tasks/${task._id}/activity`);
+      const response = await axios.get(`http://localhost:5000/api/tasks/${task._id}/activity`);
       setActivityLogs(response.data);
     } catch (error) {
       console.error('Error fetching activity logs:', error);

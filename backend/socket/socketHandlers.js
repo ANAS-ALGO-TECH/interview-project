@@ -1,6 +1,7 @@
 const Task = require('../models/Task');
 const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
+const { mockTasks, mockActivityLogs, generateId, populateTask } = require('../data/mockData');
 
 const socketHandlers = (io) => {
   io.on('connection', (socket) => {

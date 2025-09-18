@@ -1,6 +1,6 @@
 .app {
   min-height: 100vh;
-  background-color: #f5f7fa;
+  background: transparent;
 }
 
 .main-content {
@@ -24,20 +24,24 @@
 }
 
 .task-board-section {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .activity-section {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   padding: 24px;
   height: fit-content;
   position: sticky;
   top: 100px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 @media (max-width: 1024px) {

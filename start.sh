@@ -34,7 +34,7 @@ echo "🌱 Checking database..."
 cd backend
 node -e "
 const mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost:27017/collaboration_dashboard', {useNewUrlParser: true, useUnifiedTopology: true});
+mongoose.connect('mongodb+srv://ANAS_TODO_MERN_APP:SKILLS-niche090*@anastodomernapp.ykfbxvh.mongodb.net/AnasTrello?retryWrites=true&w=majority');
 const Task = require('./models/Task');
 Task.countDocuments().then(count => {
   if (count === 0) {
